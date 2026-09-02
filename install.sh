@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export PATH="$HOME/.local/bin:$PATH"
 
 # ==============================================================================
 # 基础环境
@@ -136,6 +137,18 @@ timeout --foreground 15m bash -c '
   nvm install --lts
 '
 
+# 子 Shell 的环境不会回传；在当前脚本中重新加载并启用 LTS 版本。
+# shellcheck disable=SC1090
+source "$NVM_DIR/nvm.sh"
+nvm use --lts >/dev/null
+if ! command -v node >/dev/null 2>&1 || \
+   ! command -v npm >/dev/null 2>&1 || \
+   ! command -v npx >/dev/null 2>&1; then
+  printf '[dotfiles] 错误: Node.js 安装完成后找不到 node、npm 或 npx\n' >&2
+  exit 1
+fi
+printf '[dotfiles] Node.js: %s，npm: %s\n' "$(node --version)" "$(npm --version)"
+
 # ==============================================================================
 # 终端工具
 # ==============================================================================
@@ -156,7 +169,6 @@ if [[ -n "$nerd_font_name" ]]; then
   printf '[dotfiles] 安装 Nerd Fonts: %s\n' "$nerd_font_name"
   timeout --foreground 5m bash -o pipefail -c \
     'curl -fsSL https://raw.githubusercontent.com/ronniedroid/getnf/main/install.sh | bash'
-  export PATH="$HOME/.local/bin:$PATH"
   if ! command -v getnf >/dev/null 2>&1; then
     printf '[dotfiles] 错误: getnf 安装后不可用\n' >&2
     exit 1
