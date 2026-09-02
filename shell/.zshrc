@@ -64,6 +64,45 @@ sss() {
   AMENT_SHELL=sh source "$setup_file"
 }
 
+# 代理端口设置 传入ip与端口
+proxy () {
+    action=$1
+    addr=$2
+
+    if [ "$action" = "on" ]; then
+        if [ -z "$addr" ]; then
+            echo "Usage: proxy on <ip:port>"
+            return 1
+        fi
+
+        proxy_url="http://$addr"
+
+        export http_proxy=$proxy_url
+        export https_proxy=$proxy_url
+        export ftp_proxy=$proxy_url
+
+        git config --global http.proxy $proxy_url
+        git config --global https.proxy $proxy_url
+
+        echo "Proxy enabled: $proxy_url"
+
+    elif [ "$action" = "off" ]; then
+        unset http_proxy
+        unset https_proxy
+        unset ftp_proxy
+
+        git config --global --unset http.proxy
+        git config --global --unset https.proxy
+
+        echo "Proxy disabled"
+
+    else
+        echo "Usage:"
+        echo "  proxy on <ip:port>"
+        echo "  proxy off"
+    fi
+}
+
 # ==============================================================================
 # 机器人开发环境：Gazebo Classic 与 ROS 2 Humble
 # ==============================================================================
@@ -126,12 +165,12 @@ unfunction _register_python_argcomplete
 [[ -s "$NVM_DIR/bash_completion" ]] && source "$NVM_DIR/bash_completion"
 
 
-# 进入 HOME 目录（仅限交互式 shell 启动时）+ 启动时手动打开ros2 daemon
-if [ -n "$PS1" ] && [ "$PWD" != "$HOME" ] && [ -z "$BASHRC_ALREADY_RAN" ]; then
-  export BASHRC_ALREADY_RAN=1
-  cd ~
-  ros2 daemon start
-fi
+# # 进入 HOME 目录（仅限交互式 shell 启动时）+ 启动时手动打开ros2 daemon
+# if [ -n "$PS1" ] && [ "$PWD" != "$HOME" ] && [ -z "$BASHRC_ALREADY_RAN" ]; then
+#   export BASHRC_ALREADY_RAN=1
+#   cd ~
+#   ros2 daemon start
+# fi
 
 # ==============================================================================
 # Powerlevel10k 用户配置

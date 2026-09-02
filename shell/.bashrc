@@ -130,7 +130,6 @@ alias cl='clear;'
 alias ll='ls -la'
 alias ss='source ~/.bashrc'
 
-
 # 代理端口设置 传入ip与端口
 proxy () {
     action=$1

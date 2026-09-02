@@ -50,6 +50,13 @@ timeout --foreground 15m "${apt_command[@]}" install -y --no-install-recommends 
 printf '[dotfiles] 安装 Zsh\n'
 timeout --foreground 10m "${apt_command[@]}" install -y zsh
 
+# ==============================================================================
+# 常用命令行工具
+# ==============================================================================
+printf '[dotfiles] 安装常用命令行工具\n'
+timeout --foreground 15m "${apt_command[@]}" install -y \
+  btop ffmpeg jq fzf zoxide resvg xclip 7zip fd-find ripgrep
+
 oh_my_zsh_dir="${ZSH:-$HOME/.oh-my-zsh}"
 if [[ -d "$oh_my_zsh_dir/.git" ]]; then
   printf '[dotfiles] Oh My Zsh 已安装，跳过\n'
@@ -130,11 +137,34 @@ timeout --foreground 15m bash -c '
 '
 
 # ==============================================================================
-# 开发工具链
+# 终端工具
 # ==============================================================================
+printf '[dotfiles] 安装 Yazi\n'
+timeout --foreground 10m bash -c '"$HOME/.local/bin/uv" tool install yazi-bin'
 printf '[dotfiles] 安装 Herdr\n'
 timeout --foreground 10m bash -o pipefail -c \
   'curl -fsSL https://herdr.dev/install.sh | sh'
+
+# ==============================================================================
+# Nerd Fonts 字体（可选）
+# 直接按回车跳过；输入字体名称，例如 JetBrainsMono 或 FiraCode。
+# ==============================================================================
+printf '\n[dotfiles] Nerd Fonts 字体安装是可选的。\n'
+printf '[dotfiles] 输入字体名称后按回车安装，直接按回车跳过: '
+read -r nerd_font_name
+if [[ -n "$nerd_font_name" ]]; then
+  printf '[dotfiles] 安装 Nerd Fonts: %s\n' "$nerd_font_name"
+  timeout --foreground 5m bash -o pipefail -c \
+    'curl -fsSL https://raw.githubusercontent.com/ronniedroid/getnf/main/install.sh | bash'
+  export PATH="$HOME/.local/bin:$PATH"
+  if ! command -v getnf >/dev/null 2>&1; then
+    printf '[dotfiles] 错误: getnf 安装后不可用\n' >&2
+    exit 1
+  fi
+  timeout --foreground 15m getnf install "$nerd_font_name"
+else
+  printf '[dotfiles] 跳过 Nerd Fonts 安装\n'
+fi
 
 # ==============================================================================
 # Agents 工具链
