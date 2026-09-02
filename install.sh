@@ -50,11 +50,19 @@ timeout --foreground 15m "${apt_command[@]}" install -y --no-install-recommends 
 printf '[dotfiles] 安装 Zsh\n'
 timeout --foreground 10m "${apt_command[@]}" install -y zsh
 
-printf '[dotfiles] 安装 Oh My Zsh\n'
-timeout --foreground 10m bash -o pipefail -c \
-  'RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://install.ohmyz.sh/)"'
+oh_my_zsh_dir="${ZSH:-$HOME/.oh-my-zsh}"
+if [[ -d "$oh_my_zsh_dir/.git" ]]; then
+  printf '[dotfiles] Oh My Zsh 已安装，跳过\n'
+elif [[ -e "$oh_my_zsh_dir" ]]; then
+  printf '[dotfiles] 错误: %s 已存在但不是有效的 Oh My Zsh 仓库\n' "$oh_my_zsh_dir" >&2
+  exit 1
+else
+  printf '[dotfiles] 安装 Oh My Zsh\n'
+  timeout --foreground 10m bash -o pipefail -c \
+    'RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://install.ohmyz.sh/)"'
+fi
 
-zsh_custom_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+zsh_custom_dir="${ZSH_CUSTOM:-$oh_my_zsh_dir/custom}"
 
 if [[ ! -d "$zsh_custom_dir/themes/powerlevel10k/.git" ]]; then
   printf '[dotfiles] 安装 Powerlevel10k\n'
@@ -116,7 +124,10 @@ fi
 # shellcheck disable=SC1090
 source "$NVM_DIR/nvm.sh"
 printf '[dotfiles] 安装 Node.js LTS\n'
-timeout --foreground 15m nvm install --lts
+timeout --foreground 15m bash -c '
+  source "$NVM_DIR/nvm.sh"
+  nvm install --lts
+'
 
 # ==============================================================================
 # 开发工具链
@@ -133,8 +144,8 @@ timeout --foreground 10m bash -o pipefail -c \
   'curl -fsSL https://github.com/SaladDay/cc-switch-cli/releases/latest/download/install.sh | bash'
 
 printf '[dotfiles] 安装 OpenCode\n'
-timeout --foreground 10m bash -o pipefail -c \
-  'curl -fsSL https://opencode.ai/install | bash'
+timeout --foreground 2m npm config set allow-scripts=opencode-ai --location=user
+timeout --foreground 15m npm install --global opencode-ai
 
 printf '[dotfiles] 安装 OpenAI Codex CLI\n'
 timeout --foreground 15m npm install -g @openai/codex
@@ -151,6 +162,23 @@ timeout --foreground 30m npx skills@latest add mattpocock/skills
 # ==============================================================================
 printf '[dotfiles] 部署 Shell 和 SSH 配置\n'
 cd "$repo_dir"
+
+# 安装器可能生成普通配置文件；先备份冲突项，再交给 Stow 建立软链接。
+backup_dir="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
+for config_path in \
+  "$HOME/.bashrc" \
+  "$HOME/.zshrc" \
+  "$HOME/.p10k.zsh" \
+  "$HOME/.ssh/config" \
+  "$HOME/.ssh/id_rsa.pub" \
+  "$HOME/.ssh/authorized_keys"; do
+  if [[ -f "$config_path" && ! -L "$config_path" ]]; then
+    mkdir -p "$backup_dir$(dirname "${config_path#$HOME}")"
+    mv "$config_path" "$backup_dir${config_path#$HOME}"
+    printf '[dotfiles] 已备份冲突文件: %s\n' "$config_path"
+  fi
+done
+
 timeout --foreground 2m stow --target="$HOME" shell ssh
 
 chmod 700 "$HOME/.ssh"
